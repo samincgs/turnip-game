@@ -96,8 +96,6 @@ class Game:
             
             self.display.fill((8, 20, 30))
             self.ui_display.fill((0, 0, 0, 0))
-
-            self.camera.update()
             
             edges = self.tilemap.get_map_edges()
             
@@ -130,6 +128,8 @@ class Game:
                 self.particle_manager.particles.append(pt.Particle(self, (torch['pos'][0] + 5, torch['pos'][1] + 3), (4 + random.random() * -8, -4 + random.random() * -8), 'particles', decay_rate=1.7 + random.random(), start_frame=2 + random.random() * 3, glow=(3, 3 + random.randint(1, 3), 8 + random.randint(1, 6)), glow_radius=3 + random.random() * 6))
 
             self.player.update()
+            self.camera.update()
+            
             self.player.render(self.display, offset=self.camera.render_scroll)
              
             self.hud.render(self.ui_display, offset=self.camera.render_scroll)

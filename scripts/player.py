@@ -30,7 +30,7 @@ class Player(pt.PhysicsEntity):
                  
     def update(self):
         super().update(1/60)
-        
+                
         if not self.dead:
             self.velocity[1] = min(3, self.velocity[1] + 0.1)
         else:
@@ -51,7 +51,7 @@ class Player(pt.PhysicsEntity):
         
         self.frame_movement[0] += self.velocity[0]
         self.frame_movement[1] = self.velocity[1]
-        
+                
         if not self.dead:
             if self.frame_movement[0] > 0:
                 self.flip[0] = False
@@ -66,6 +66,7 @@ class Player(pt.PhysicsEntity):
             else:
                 self.set_action('idle')
         
+        
         self.physics_movement(self.game.tilemap if not self.dead else None, self.frame_movement)
         if self.collision_directions['down'] or self.collision_directions['up']:
             self.velocity[1] = 0
@@ -74,7 +75,6 @@ class Player(pt.PhysicsEntity):
             self.jumps = self.max_jumps
             
     def render(self, surf, offset=(0, 0)):
-        offset = list(offset)
         super().render(surf, offset=offset)
         
         

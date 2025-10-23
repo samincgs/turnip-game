@@ -38,7 +38,7 @@ class Entity:
           
     @property 
     def center(self):
-        return [self.pos[0] + self.size[0] // 2, self.pos[1] + self.size[1] // 2]
+        return [self.render_pos[0] + self.size[0] // 2, self.render_pos[1] + self.size[1] // 2]
     
     @property
     def rect(self):
