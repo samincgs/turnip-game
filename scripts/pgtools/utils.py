@@ -18,7 +18,7 @@ def load_imgs(path, colorkey=(0, 0, 0), alpha=False):
     return imgs
 
 # load a directory of images into a dictionary
-def load_dir(path, colorkey=(0, 0, 0), alpha=False):
+def load_imgs_dict(path, colorkey=(0, 0, 0), alpha=False):
     imgs = {}
     for file in sorted(os.listdir(path)):
         name = file.split('.')[0]
@@ -27,7 +27,7 @@ def load_dir(path, colorkey=(0, 0, 0), alpha=False):
     return imgs
 
 # load multiple directories into a dict with lists of images
-def load_dir_list(path, colorkey=(0, 0, 0), alpha=False):
+def load_directory(path, colorkey=(0, 0, 0), alpha=False):
     image_dir = {}
     for folder in sorted(os.listdir(path)):
         image_dir[folder] = []
@@ -112,7 +112,7 @@ def normalize(vel, amt, target=0):
     return target
 
 def follow_target(val, target, lag):
-    val += (target - val) / lag
+    val += (target - val) / lag 
     return val
 
 def load_spritesheets(path):
@@ -166,12 +166,10 @@ def load_spritesheets(path):
                         tile_variants = len(spritesheet_dict[tile_name])
                         data = {'tile_offsets': {}}
                         for i in range(tile_variants):
-                            data['tile_offsets'][str(i)] = [0, 0]
+                            data['tile_offsets'][i] = [0, 0]
                         save_json(path + tile_name + '.json', data)
         
-        for img_file in os.listdir(path):
-            if img_file.endswith('.json') and img_file.split('.')[0] in spritesheet_dict:
-                 tileset_config[img_file.split('.')[0]] = load_json(path + img_file)
+
                 
                 
                                 

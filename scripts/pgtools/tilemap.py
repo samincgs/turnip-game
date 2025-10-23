@@ -22,9 +22,8 @@ AUTOTILE_BORDERS = {
 }
 
 class Tilemap:
-    def __init__(self, game, display_size, tile_size=16):
+    def __init__(self, game, tile_size=16):
         self.game = game
-        self.display_size = display_size
         self.tile_size = tile_size
         
         self.tilemap = {} # { {'5;7' : 0 {{'type': 'grass', 'variant': 0, 'pos': [x, x]}}}}
@@ -87,7 +86,7 @@ class Tilemap:
             return True
     
     # make better later
-    def extract(self, filter_func, keep=True, offgrid=True): # id_pairs -> ('decor', (1, 2)) tile type, tile variants
+    def extract(self, filter_func, keep=False, offgrid=True):
         extract_list = []
         if offgrid:
             for layer in self.offgrid_tiles:
@@ -106,8 +105,7 @@ class Tilemap:
                             self.remove_tile(tile)
         
         return extract_list
-                    
-
+            
     def load_map(self, path):
         map_data = load_json(path)
         
@@ -188,6 +186,34 @@ class Tilemap:
                             border_list = sorted(AUTOTILE_BORDERS[border])
                             if neighbours == border_list:
                                 tile['variant'] = border
+    
+    
+    def floodfill(self, curr_pos, tile_data, offset=(0, 0)):
+        floodfill_list = [curr_pos]
+        visited = set()
+        
+        MAX_TILES = 200
+        
+        while floodfill_list:            
+            tile = floodfill_list.pop(0)
+            
+            if tuple(tile) in visited:
+                continue
+            
+            visited.add(tuple(tile))
+            
+            if len(floodfill_list) > MAX_TILES:
+                return
+                
+            scaled_mpos = (tile[0] + offset[0] * self.tile_size, tile[1] + offset[1] * self.tile_size)
+            tile_data = {'type': tile_data['type'], 'variant': tile_data['variant'], 'pos': scaled_mpos, 'tile_pos': tuple(tile), 'layer': tile_data['layer']}
+            self.add_tile(tile_data)
+            
+            bordering_tiles = [[tile[0] + 1, tile[1]], [tile[0] - 1, tile[1]], [tile[0], tile[1] + 1], [tile[0], tile[1] - 1]]
+            for b in bordering_tiles:
+                if not self.get_tile_by_layer(b, tile_data['layer']) and tuple(b) not in visited:
+                    floodfill_list.append(b)
+                    
        
     def render_visible(self, surf, offset=(0, 0)):
         render_queue = []
@@ -196,23 +222,20 @@ class Tilemap:
             tile_layer = self.offgrid_tiles[str(layer)]
             for tile in tile_layer:
                 render_queue.append((int(layer), self.tiles[tile['type']][tile['variant']], (tile['pos'][0] - offset[0], tile['pos'][1] - offset[1])))
-                # surf.blit(tiles[tile['type']][tile['variant']], (tile['pos'][0] - offset[0], tile['pos'][1] - offset[1]))
                 
-        for y in range(math.ceil(self.display_size[1] / self.tile_size) + 1):
-            for x in range(math.ceil(self.display_size[0] / self.tile_size) + 1):
-                tile_pos = (x + int(round(offset[0] / self.tile_size - 0.5, 0)), y + int(round(offset[1] / self.tile_size - 0.5, 0)))
-                tile_loc = str(tile_pos[0]) + ';' + str(tile_pos[1])
+        for y in range(int(offset[1] // self.tile_size), int((offset[1] + surf.get_height()) // self.tile_size) + 1):
+            for x in range(int(offset[0] // self.tile_size), int((offset[0] + surf.get_width()) // self.tile_size) + 1):
+                tile_loc = str(x) + ';' + str(y)
                 if tile_loc in self.tilemap:
                     for layer in sorted(int(layer) for layer in self.tilemap[tile_loc]):
                         tile = self.tilemap[tile_loc][str(layer)]
                         render_queue.append((int(layer), self.tiles[tile['type']][tile['variant']], (tile['tile_pos'][0] * self.tile_size - offset[0], tile['tile_pos'][1] * self.tile_size - offset[1])))
-                        # surf.blit(tiles[tile['type']][tile['variant']], (tile['tile_pos'][0] * self.tile_size - offset[0], tile['tile_pos'][1] * self.tile_size - offset[1]))
                         
         render_queue.sort(key=lambda x: x[0]) # sort the layer
         
         for tile in render_queue:
-            surf.blit(tile[1], tile[2])
-        
+            surf.blit(tile[1], (int(tile[2][0]), int(tile[2][1])))
+
                         
     def render_all(self, surf, offset=(0, 0)):
         render_queue = []

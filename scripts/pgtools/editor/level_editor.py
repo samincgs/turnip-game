@@ -8,23 +8,21 @@ from ..tilemap import Tilemap
 from ..font import Font
 from ..utils import load_spritesheets
 
-TILE_SIZE = 8
-
 class LevelEditor:
     def __init__(self):
         pygame.init()
         
         self.display_size = (600, 400)
         self.display_scale = 2
-        
         pygame.display.set_caption('Level Editor')
+        
         self.screen = pygame.display.set_mode((self.display_size[0] * self.display_scale, self.display_size[1] * self.display_scale))
         self.display = pygame.Surface(self.display_size)
         self.clock = pygame.time.Clock() 
                 
         self.file_name = None
         
-        self.tilemap = Tilemap(self, (800, 600), tile_size=TILE_SIZE)
+        self.tilemap = Tilemap(self, tile_size=8)
         
         self.spritesheet_data = load_spritesheets('data/images/spritesheets/')
             
@@ -60,8 +58,6 @@ class LevelEditor:
         self.selection_rect = None # only with rect
         self.selection_points = [] # only with rect
                                 
-        # self.reset_rect()
-    
     def remove_all_tiles(self): # keybinding: x
         if self.selection_rect: # only with rect
             for loc in self.tilemap.tilemap.copy():
@@ -71,30 +67,7 @@ class LevelEditor:
                         if self.selection_rect.collidepoint((tile['tile_pos'][0] * self.tilemap.tile_size, tile['tile_pos'][1] * self.tilemap.tile_size)):  # only with rect
                             self.tilemap.remove_tile(tile)
         
-        self.reset_rect()
         
-    def floodfill(self, curr_pos):
-        floodfill_list = [curr_pos]
-        visited = set()
-        
-        while floodfill_list:
-            tile = floodfill_list.pop(0)
-            
-            if tuple(tile) in visited:
-                continue
-            
-            visited.add(tuple(tile))
-                
-            scaled_mpos = (tile[0] + self.scroll[0] * self.tilemap.tile_size, tile[1] + self.scroll[1] * self.tilemap.tile_size)
-            tile_data = {'type': self.tile_list[self.tile_group], 'variant': self.tile_variant, 'pos': scaled_mpos, 'tile_pos': tuple(tile), 'layer': self.current_layer}
-            self.tilemap.add_tile(tile_data)
-            
-            bordering_tiles = [[tile[0] + 1, tile[1]], [tile[0] - 1, tile[1]], [tile[0], tile[1] + 1], [tile[0], tile[1] - 1]]
-            for b in bordering_tiles:
-                if not self.tilemap.get_tile_by_layer(b, self.current_layer) and tuple(b) not in visited:
-                    floodfill_list.append(b)
-            
-    
     def render_editor(self, surf, offset=(0,0)): 
         
         render_queue = []
@@ -146,7 +119,7 @@ class LevelEditor:
             
             # mouse pos
             mpos = pygame.mouse.get_pos()
-            mpos = (int(mpos[0] // self.display_scale), int(mpos[1] // self.display_scale))
+            mpos = (mpos[0] // self.display_scale, mpos[1] // self.display_scale)
             scaled_mpos = (mpos[0] + self.scroll[0], mpos[1] + self.scroll[1])
             tile_pos = (int(mpos[0] + self.scroll[0]) // self.tilemap.tile_size, int(mpos[1] + self.scroll[1]) // self.tilemap.tile_size)
                         
@@ -154,21 +127,29 @@ class LevelEditor:
             tile_choice = current_tile.copy()
             tile_choice.set_alpha(210)
             
-            tile_data = {'type': self.tile_list[self.tile_group], 'variant': self.tile_variant, 'pos': scaled_mpos, 'tile_pos': tile_pos, 'layer': self.current_layer }         
+            tile_data = {'type': self.tile_list[self.tile_group], 'variant': self.tile_variant, 'pos': scaled_mpos, 'tile_pos': tile_pos, 'layer': self.current_layer}         
             if mpos[0] > self.sidebar_size:
                 if self.placement_mode == 'grid':
                     if self.clicking:
                         self.tilemap.add_tile(tile_data)
                     elif self.right_clicking:
                         self.tilemap.remove_tile(tile_data)
-                        # remove grid tile
                 else: # offgrid
                     if self.click:
                         self.tilemap.add_offgrid_tile(tile_data)
                     elif self.right_click:
                         self.tilemap.remove_offgrid_tile(self.current_layer, curr_mpos=scaled_mpos)
                                 
-                                
+            
+            
+            self.render_editor(self.display, offset=render_scroll)
+            if self.placement_mode == 'grid':
+                self.display.blit(tile_choice, (tile_pos[0] * self.tilemap.tile_size - self.scroll[0], tile_pos[1] * self.tilemap.tile_size - self.scroll[1]))
+            else:
+                self.display.blit(tile_choice, mpos)
+            
+            self.display.blit(current_tile, (self.sidebar_size + 20, 20))
+                              
             # draw topleft sidebar  
             sidebar_surf = pygame.Surface((self.sidebar_size, 100))
             sidebar_surf.fill(self.sidebar_color)
@@ -204,50 +185,42 @@ class LevelEditor:
                     y_offset = 2
                 tile_selector_surf.blit(val, (1, 2 + (max_height * ix * 1.5) - y_offset + self.sidebar_scroll[1]))
             
-            self.render_editor(self.display, offset=render_scroll)
-            
-            if self.placement_mode == 'grid':
-                self.display.blit(tile_choice, (tile_pos[0] * self.tilemap.tile_size - self.scroll[0], tile_pos[1] * self.tilemap.tile_size - self.scroll[1]))
-            else:
-                self.display.blit(tile_choice, mpos)
-            
-            self.display.blit(current_tile, (self.sidebar_size + 20, 20))
-            
-            right_offset = 5
-            y_text_pos = 7
+        
             
             file_text = 'file: ' + (str(self.file_name.split('/')[-1]) if self.file_name else 'None')
-            self.font.render(self.display, file_text, (self.display.get_width() - self.font.get_width(file_text) - right_offset, y_text_pos))
-            y_text_pos += 15
+            self.font.render(self.display, file_text, (self.display.get_width() - self.font.get_width(file_text) - 5, 7))
             
             placement_text = 'placement_mode: ' + str(self.placement_mode)
-            self.font.render(self.display, placement_text, (self.display.get_width() - self.font.get_width(placement_text) - right_offset, y_text_pos))
-            y_text_pos += 15
+            self.font.render(self.display, placement_text, (self.display.get_width() - self.font.get_width(placement_text) - 5, 23))
             
             layer_text = 'layer: ' + str(self.current_layer)
-            self.font.render(self.display, layer_text, (self.display.get_width() - self.font.get_width(layer_text) - right_offset, y_text_pos))
-            y_text_pos += 15
+            self.font.render(self.display, layer_text, (self.display.get_width() - self.font.get_width(layer_text) - 5, 38))
             
             pos_text = 'pos: ' + str(list(scaled_mpos))
-            self.font.render(self.display, pos_text, (self.display.get_width() - self.font.get_width(pos_text) - right_offset, y_text_pos))
-            y_text_pos += 15
+            self.font.render(self.display, pos_text, (self.display.get_width() - self.font.get_width(pos_text) - 5, 53))
             
             tile_pos_text = 'tile_pos: ' + str(list(tile_pos))
-            self.font.render(self.display, tile_pos_text, (self.display.get_width() - self.font.get_width(tile_pos_text) - right_offset, y_text_pos))
-            y_text_pos += 15
-            if mpos[0] < self.sidebar_size:
-                if mpos[1] < 100:
-                    if len(self.tile_list) > 10:
-                        if self.scrolled_up and self.sidebar_scroll[0] > 0:
-                            self.sidebar_scroll[0] -= 10
-                        if self.scrolled_down :
-                            self.sidebar_scroll[0] += 10
-                else:
-                    if self.scrolled_up and self.sidebar_scroll[1] > 0:
-                        self.sidebar_scroll[1] -= 10
-                    if self.scrolled_down:
-                        self.sidebar_scroll[1] += 10
+            self.font.render(self.display, tile_pos_text, (self.display.get_width() - self.font.get_width(tile_pos_text) - 5, 68))
             
+            tilemap_size_text = 'tilemap size: ' + str(len(self.tilemap.tilemap) + sum([len(self.tilemap.offgrid_tiles[tile]) for tile in self.tilemap.offgrid_tiles]))
+            self.font.render(self.display, tilemap_size_text, (self.display.get_width() - self.font.get_width(tilemap_size_text) - 5, 83))
+                        
+            # sidebar scrolling
+            if mpos[0] < self.sidebar_size:
+                if mpos[1] < 100: # top bar
+                    if len(self.tile_list) > 10: 
+                        if self.scrolled_up and self.sidebar_scroll[0] < 0:
+                            self.sidebar_scroll[0] += 10
+                        if self.scrolled_down :
+                            self.sidebar_scroll[0] -= 10
+                else:
+                    if self.scrolled_up and self.sidebar_scroll[1] < 0:
+                        self.sidebar_scroll[1] += 10
+                    if self.scrolled_down:
+                        self.sidebar_scroll[1] -= 10
+            
+            
+            # rectangle selection
             if len(self.selection_points):
                 start_point = self.selection_points[0]
                 if self.selection_points[1] != None:
@@ -263,11 +236,9 @@ class LevelEditor:
                     if self.selection_points[2] != True:
                         pygame.draw.rect(self.display, (0, 0, 152), displayed_rect, 1)
                     else:
-                        self.selection_points = []
-                        self.selection_rect = None
+                        self.reset_rect()
                         
                     
-                
             self.click = False
             self.right_click = False
             self.scrolled_up = False
@@ -319,8 +290,11 @@ class LevelEditor:
                         self.reset_rect()
                     if event.key == pygame.K_x:
                         self.remove_all_tiles()
+                        self.reset_rect()
                     if event.key == pygame.K_f:
-                        self.floodfill(tile_pos)
+                        tile_data = {'type': self.tile_list[self.tile_group], 'variant': self.tile_variant, 'layer': self.current_layer}
+                        self.tilemap.floodfill(tile_pos, tile_data, self.scroll)
+                        self.reset_rect()
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_a:
                         self.movement[0] = False

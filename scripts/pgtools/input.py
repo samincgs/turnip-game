@@ -1,21 +1,32 @@
 import pygame
 import sys
 
-RENDER_SCALE = 4
 INPUT_MAP = {
     'mouse': {
-        'click': 1
+        'shoot': 1,
+        'attack': 1,
+        'dash': 3,
+        'scroll_up': 4,
+        'scroll_down': 5
         },
     'keyboard': {
         'left': 97,
         'right': 100,
-        'jump': 32,         
+        'jump': 32,    
+        'reload': 114,
+        'up': 119,     
+        'down': 115,
+        'inventory_toggle': 101,
+        'shift': 1073742049,
+        'quit': 27,
+        'fps': 9,
+        'screen_toggle': 96,
+        'equip': 122
     }
      
 }
 
-
-class InputState:
+class InputData:
     def __init__(self, input_type, id):
         self.type = input_type
         self.id = id
@@ -41,31 +52,41 @@ class InputState:
         self.clicked = False
     
 class Input:
-    def __init__(self):
-        self.keyboard = {key: InputState('keyboard', INPUT_MAP['keyboard'][key]) for key in INPUT_MAP['keyboard']}
-        self.mouse = {btn: InputState('mouse', INPUT_MAP['mouse'][btn]) for btn in INPUT_MAP['mouse']}
+    def __init__(self, render_scale):
+        self.render_scale = render_scale
+        
+        self.keyboard = {key: InputData('keyboard', INPUT_MAP['keyboard'][key]) for key in INPUT_MAP['keyboard']}
+        self.mouse = {btn: InputData('mouse', INPUT_MAP['mouse'][btn]) for btn in INPUT_MAP['mouse']}
         self.mpos = (0, 0)
     
-    def pressed(self, key):
+    def pressing(self, key):
         return self.keyboard[key].pressed
+     
+    def pressing_any_key(self):
+        return True if any([key.pressed for key in self.keyboard.values()]) else False
     
     def holding(self, key):
-        return self.keyboard[key].held
+        if key in INPUT_MAP['keyboard']:
+            return self.keyboard[key].held
+        else:
+            return self.mouse[key].held
     
     def clicking(self, btn):
         return self.mouse[btn].clicked
     
+    def reset(self):
+        for trigger in self.keyboard:
+            self.keyboard[trigger].reset()
+        for click in self.mouse:
+            self.mouse[click].reset()
+    
     def update(self):
-        all_triggers = {*self.keyboard, *self.mouse}
-        for trigger in all_triggers:
-            if trigger in self.keyboard:
-                self.keyboard[trigger].reset()
-            else:
-                self.mouse[trigger].reset()
                 
         self.mpos = pygame.mouse.get_pos()
-        self.mpos = (self.mpos[0] // RENDER_SCALE, self.mpos[1] // RENDER_SCALE)
-                   
+        self.mpos = (self.mpos[0] // self.render_scale, self.mpos[1] // self.render_scale)
+        
+        self.reset()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -76,7 +97,7 @@ class Input:
                         self.mouse[btn].press()
             if event.type == pygame.MOUSEBUTTONUP:
                 for btn in self.mouse:
-                    if event.button == self.mouse[btn].id:
+                    if event.button == self.mouse[btn].id and (self.mouse[btn].id not in [4, 5]): # make sure it doesn't release on scroll
                         self.mouse[btn].release()
             if event.type == pygame.KEYDOWN:
                 # print(event.key)

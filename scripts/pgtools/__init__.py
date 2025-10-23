@@ -5,5 +5,5 @@ from .font import Font
 from .input import Input
 from .particle import ParticleManager, Particle
 from .tilemap import Tilemap
-from .vfx import VFX
+from .vfx import VFX, Spark, Circle, ActionAnimation
 from . import utils

@@ -1,21 +1,32 @@
 import scripts.pgtools as pt
 
+INSTRUCTION_TEXT = ['Use a and d to move and space to jump', 'Collect keys and escape']
+
 class HUD:
     def __init__(self, game):
         self.game = game
+        self.main_font = pt.Font(font_color=(255, 255, 255))
         
-        self.tutorial = {'space': False, 'd': False, 'a': False}
-        self.icons = pt.utils.load_dir('data/images/icons')
-        
-             
+        self.instruction_index = 0
+        self.level_text_loc = -100
+            
     def render(self, surf, offset=(0, 0)):
-        for btn in self.tutorial:
-            if not self.tutorial[btn]:
-                btn_img = self.icons[btn]
-                if btn == 'space':
-                    surf.blit(btn_img, (self.game.player.center[0] - offset[0] - btn_img.get_width() // 2 - 1, self.game.player.pos[1] - offset[1] - 9 - btn_img.get_height()))
-                if btn == 'd':
-                    surf.blit(btn_img, (self.game.player.center[0] - offset[0] - btn_img.get_width() // 2 + 8, self.game.player.pos[1] - offset[1] - btn_img.get_height()))
-                if btn == 'a':
-                    btn_img = self.icons[btn] if self.game.master_clock % 60 < 30 else self.icons[btn + '_pressed']
-                    surf.blit(btn_img, (self.game.player.center[0] - offset[0] - btn_img.get_width() // 2 - 9, self.game.player.pos[1] - offset[1] - btn_img.get_height()))
+        level_text = self.game.level + 1
+        
+        self.level_text_loc += (2 - self.level_text_loc) / 10
+        
+        self.main_font.render(surf, 'Level: ' + str(level_text), (int(self.level_text_loc), 2))
+        
+        
+        instruction_text = INSTRUCTION_TEXT[self.instruction_index] if self.instruction_index < len(INSTRUCTION_TEXT) else None
+        if instruction_text:
+            self.main_font.outline_text(surf, instruction_text, (surf.get_width() // 2 - self.main_font.get_width(instruction_text) // 2, surf.get_height() // 2 - self.main_font.get_height() // 2), outline_color=(8, 20, 30))
+        
+        if self.instruction_index == 0:
+            if self.game.input.pressing('right') or self.game.input.pressing('left'):
+                self.instruction_index += 1
+        elif self.instruction_index == 1:
+            if self.game.input.pressing_any_key():
+                self.instruction_index += 1
+
+                

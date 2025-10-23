@@ -33,8 +33,29 @@ class Font:
             elif char == ' ':
                 width += self.base_size[0]
         return width
-            
-    def render(self, surf, text, loc): # add line_width
+    
+    def get_height(self):
+        return self.base_size[1]
+    
+    def outline_text(self, surf, text, loc, outline_color, spacing=(1, 1)):
+        outline_font = Font(font_color=outline_color)
+        outline_font.render(surf, text, (loc[0] + spacing[0], loc[1] + spacing[1]))
+        self.render(surf, text, loc)
+        
+    def render(self, surf, text, loc, line_width=0):
+        
+        if line_width: # add line width and modify text before rendering
+            curr_width = 0
+            spaced_text = text.split(' ')
+            for i, word in enumerate(spaced_text):
+                w = self.get_width(word)
+                if curr_width + w > line_width:
+                    spaced_text[i] = '\n' + word
+                    curr_width = w
+                else:
+                    curr_width += w
+            text = ' '.join(spaced_text)
+        
         x_offset = 0
         loc = list(loc)
         for char in text:

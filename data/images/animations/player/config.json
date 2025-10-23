@@ -3,18 +3,18 @@
   "animations": {
     "run": {
       "type": "run",
-      "frames": [5, 12, 5, 8],
+      "frames": [5, 5, 5],
       "loop": true,
-      "speed": 1.2,
-      "offset": [2, 2],
+      "speed": 1.0,
+      "offset": [-2, -4],
       "outline": null
     },
     "idle": {
       "type": "idle",
       "frames": [5, 5, 5, 5, 5, 5],
       "loop": true,
-      "speed": 1.0,
-      "offset": [3, 2],
+      "speed": 0.7,
+      "offset": [-2, -4],
       "outline": null
     },
     "jump": {
@@ -22,7 +22,7 @@
       "frames": [5],
       "loop": false,
       "speed": 1.0,
-      "offset": [3, 2],
+      "offset": [-2, -4],
       "outline": null
     }
   }

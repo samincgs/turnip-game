@@ -52,49 +52,69 @@ class Animation:
 class AnimationManager:
     def __init__(self):
         self.animations = {}
-        self.generate_config() # save config if it isnt there
+        self.generate_configs() # save config if it isnt there
+        self.load_configs()
         
+    def load_configs(self):
         # load animations
         for entity_id in os.listdir(ANIMATIONS_PATH):
-            if os.path.isdir(ANIMATIONS_PATH + entity_id):  
-                for anim_state in os.listdir(ANIMATIONS_PATH + entity_id):
-                    if os.path.isdir(ANIMATIONS_PATH + entity_id + '/' + anim_state):  
-                        animation_path = ANIMATIONS_PATH + entity_id + '/' + anim_state
-                        if os.path.isdir(animation_path):
-                            anim_id = entity_id + '/' + anim_state
-                            config = load_json(ANIMATIONS_PATH + entity_id + '/' + 'config.json')
-                            self.animations[anim_id] = Animation(config, load_imgs(f'{ANIMATIONS_PATH}{entity_id}/{anim_state}'), anim_state)
-                    
-    
-             
-    def generate_config(self):
+            entity_path = ANIMATIONS_PATH + entity_id
+            if not os.path.isdir(entity_path):  
+                continue
+            
+            config_path = entity_path + '/' + 'config.json'
+            if not os.path.isfile(config_path):
+                continue
+            
+            config = load_json(config_path)
+            
+            for anim_state in os.listdir(entity_path):
+                anim_path = entity_path + '/' + anim_state
+                if os.path.isdir(anim_path):  
+                    anim_id = entity_id + '/' + anim_state
+                    self.animations[anim_id] = Animation(config, load_imgs(anim_path), anim_state)
+              
+    def generate_configs(self):
         if not os.path.isdir(ANIMATIONS_PATH):
-            os.mkdir('data/images/animations')  
-
-        generate_config = False
-        config = {} 
+            os.mkdir(ANIMATIONS_PATH)  
+        
         for entity_id in os.listdir(ANIMATIONS_PATH):  
-            if os.path.isdir(ANIMATIONS_PATH + entity_id):  
-                for anim_state in os.listdir(ANIMATIONS_PATH + entity_id):
-                    if anim_state == 'config.json':
-                        config = load_json(ANIMATIONS_PATH + entity_id + '/' + anim_state)
-                    if os.path.isdir(ANIMATIONS_PATH + entity_id + '/' + anim_state):
-                        if 'animations' not in config:
-                            config['animations'] = {}
-                        if anim_state not in config['animations']:
-                            generate_config = True
-                            config['id'] = entity_id
-                            config['animations'][anim_state] = {}
-                            config['animations'][anim_state]['type'] = anim_state
-                            config['animations'][anim_state]["frames"] = [5] * len(os.listdir(ANIMATIONS_PATH + entity_id + '/' + anim_state))
-                            config['animations'][anim_state]["loop"] = False
-                            config['animations'][anim_state]["speed"] = 1.0
-                            config['animations'][anim_state]["offset"] = [0, 0]
-                            config['animations'][anim_state]["outline"] = None
+            entity_path = ANIMATIONS_PATH + entity_id 
+            if not os.path.isdir(entity_path):
+                continue
+            
+            config_path = entity_path + '/' + 'config.json'
+            config = {}
+            
+            if os.path.isfile(config_path):
+                config = load_json(config_path)
+            
+            if 'id' not in config:
+                config['id'] = entity_id
+            if 'animations' not in config:
+                config['animations'] = {}
+                
+            generate_config = False
+                
+            for anim_state in os.listdir(entity_path):
+                anim_path = entity_path + '/' + anim_state
+                
+                if anim_state == 'config.json':
+                    continue
+                
+                if os.path.isdir(anim_path):
+                    if anim_state not in config['animations']:
+                        generate_config = True
+                        config['animations'][anim_state] = {}
+                        config['animations'][anim_state]['type'] = anim_state
+                        config['animations'][anim_state]["frames"] = [5] * len(os.listdir(anim_path))
+                        config['animations'][anim_state]["loop"] = False
+                        config['animations'][anim_state]["speed"] = 1.0
+                        config['animations'][anim_state]["offset"] = [0, 0]
+                        config['animations'][anim_state]["outline"] = None
 
-                if generate_config:
-                    print(config)
-                    save_json(f'{ANIMATIONS_PATH}{entity_id}/config.json', config)
+            if generate_config:
+                save_json(f'{ANIMATIONS_PATH}{entity_id}/config.json', config)
                 
     def new(self, anim_id):
-        return self.animations[anim_id].copy()
+        return self.animations[anim_id].copy() if anim_id in self.animations else None

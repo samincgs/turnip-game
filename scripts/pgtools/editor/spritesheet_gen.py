@@ -36,7 +36,7 @@ img_file = pygame.image.load(img_file_path).convert()
 
 img_dimensions = (img_file.get_width() * RENDER_SCALE, img_file.get_height() * RENDER_SCALE)
 
-screen = pygame.display.set_mode(img_dimensions)
+screen = pygame.display.set_mode(img_dimensions, pygame.SCALED + pygame.RESIZABLE)
 display = img_file.copy()
 
 def clip(surf, loc, size):
@@ -97,7 +97,7 @@ def create_spritesheet(tile_config):
     if export_path:
         pygame.image.save(spritesheet_surf, export_path)
         print(f"Spritesheet saved as {export_path.split('/')[-1]}")
-
+        
 
 while True:
     
