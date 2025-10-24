@@ -7,7 +7,7 @@ class Player(pt.PhysicsEntity):
     def __init__(self, game, pos, size):
         super().__init__(game, pos, size, 'player')
         self.air_timer = 0
-        self.speed = 1.3
+        self.speed = 1.4
         self.max_jumps = 2
         self.acceleration = [0, 0]
         self.jumps = self.max_jumps
@@ -50,7 +50,7 @@ class Player(pt.PhysicsEntity):
                     self.jumps -= 1
         
         self.frame_movement[0] += self.velocity[0]
-        self.frame_movement[1] = self.velocity[1]
+        self.frame_movement[1] += self.velocity[1]
                 
         if not self.dead:
             if self.frame_movement[0] > 0:
@@ -68,6 +68,7 @@ class Player(pt.PhysicsEntity):
         
         
         self.physics_movement(self.game.tilemap if not self.dead else None, self.frame_movement)
+        print(self.pos[0])
         if self.collision_directions['down'] or self.collision_directions['up']:
             self.velocity[1] = 0
         if self.collision_directions['down']:

@@ -1,5 +1,4 @@
 import math
-import pygame
 from .utils import follow_target
 
 class Camera:

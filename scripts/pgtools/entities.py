@@ -38,16 +38,15 @@ class Entity:
           
     @property 
     def center(self):
-        return [self.render_pos[0] + self.size[0] // 2, self.render_pos[1] + self.size[1] // 2]
+        return self.rect.center
     
     @property
     def rect(self):
-        return pygame.Rect(self.pos[0], self.pos[1], self.size[0], self.size[1])
+        return pygame.Rect(self.render_pos[0], self.render_pos[1], self.size[0], self.size[1])
     
     @property
     def render_pos(self):
         return (int(self.pos[0]), int(self.pos[1]))
-    
     
     @property
     def animations(self):
@@ -88,10 +87,7 @@ class Entity:
             self.active_animation.update(dt)
     
     def render(self, surf, offset=(0, 0)):
-        pos = self.render_pos
-        render_pos = (pos[0] - offset[0] + self.anim_offset[0] - self.rotation_offset[0], pos[1] - offset[1] + self.anim_offset[1] - self.rotation_offset[1])
-        if self.type == 'player':
-            print(render_pos)
+        render_pos = (self.pos[0] - offset[0] + self.anim_offset[0] - self.rotation_offset[0], self.pos[1] - offset[1] + self.anim_offset[1] - self.rotation_offset[1])
         if self.outline:
             outline(surf, self.img, render_pos, self.outline)
         surf.blit(self.img, render_pos)
@@ -121,11 +117,11 @@ class PhysicsEntity(Entity):
         
         # horizontal
         self.pos[0] += movement[0]
-        entity_rect = self.rect
+        entity_rect = self.physics_rect
         collision_rects = []
         if tilemap:
             tile_rects = tilemap.get_nearby_rects(self.center)
-            collision_rects = tilemap.collision_check(self.rect, tile_rects)
+            collision_rects = tilemap.collision_check(self.physics_rect, tile_rects)
         for tile_rect in collision_rects:
             if movement[0] > 0:
                 entity_rect.right = tile_rect.left
@@ -138,11 +134,11 @@ class PhysicsEntity(Entity):
                                 
         # vertical     
         self.pos[1] += movement[1]
-        entity_rect = self.rect
+        entity_rect = self.physics_rect
         collision_rects = []
         if tilemap:
             tile_rects = tilemap.get_nearby_rects(self.center)
-            collision_rects = tilemap.collision_check(self.rect, tile_rects)
+            collision_rects = tilemap.collision_check(self.physics_rect, tile_rects)
         for tile_rect in collision_rects:
             if movement[1] > 0:
                 entity_rect.bottom = tile_rect.top
