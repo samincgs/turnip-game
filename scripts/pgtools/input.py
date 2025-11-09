@@ -21,9 +21,13 @@ INPUT_MAP = {
         'quit': 27,
         'fps': 9,
         'screen_toggle': 96,
-        'equip': 122
+        'equip': 122,
+        '1': 49,
+        '2': 50,
+        '3': 51,
+        '4': 52,
+        'collect': 102,
     }
-     
 }
 
 class InputData:
@@ -52,11 +56,12 @@ class InputData:
         self.clicked = False
     
 class Input:
-    def __init__(self, render_scale):
+    def __init__(self, render_scale, input_map=INPUT_MAP):
         self.render_scale = render_scale
+        self.input_map = input_map
         
-        self.keyboard = {key: InputData('keyboard', INPUT_MAP['keyboard'][key]) for key in INPUT_MAP['keyboard']}
-        self.mouse = {btn: InputData('mouse', INPUT_MAP['mouse'][btn]) for btn in INPUT_MAP['mouse']}
+        self.keyboard = {key: InputData('keyboard', self.input_map['keyboard'][key]) for key in self.input_map['keyboard']}
+        self.mouse = {btn: InputData('mouse', self.input_map['mouse'][btn]) for btn in self.input_map['mouse']}
         self.mpos = (0, 0)
     
     def pressing(self, key):

@@ -1,7 +1,6 @@
-import math
 import pygame
 
-from .utils import outline
+from .utils import outline, collision_check
 
 class Entity:
     def __init__(self, game, pos, size, e_type):
@@ -11,7 +10,6 @@ class Entity:
         self.type = e_type
         
         self.active_animation = None
-        self.static_img = None
         self.action = None
         
         self.rotation = 0
@@ -24,9 +22,10 @@ class Entity:
            
     @property
     def img(self):
-        img = self.base_img()
-        if self.active_animation and self.active_animation.outline:
-            self.outline = self.active_animation.outline
+        if self.active_animation:
+            img = self.active_animation.img
+            if self.active_animation.outline:
+                self.outline = self.active_animation.outline
         if any(self.flip):
             img = pygame.transform.flip(img, self.flip[0], self.flip[1])
         if self.rotation:
@@ -42,11 +41,7 @@ class Entity:
     
     @property
     def rect(self):
-        return pygame.Rect(self.render_pos[0], self.render_pos[1], self.size[0], self.size[1])
-    
-    @property
-    def render_pos(self):
-        return (int(self.pos[0]), int(self.pos[1]))
+        return pygame.Rect(self.pos[0], self.pos[1], self.size[0], self.size[1])
     
     @property
     def animations(self):
@@ -67,16 +62,14 @@ class Entity:
     @property
     def rotation_offset(self):
         offset = (0, 0)
+        base_img = self.active_animation.img
         if self.rotation:
-            base_img_size = self.base_img().get_size()
+            base_img_size = base_img.get_size()
             rotated_size = self.img.get_size()
             size_diff = (rotated_size[0] - base_img_size[0], rotated_size[1] - base_img_size[1])
             offset = (size_diff[0] // 2, size_diff[1] // 2)            
         return offset
         
-    def base_img(self):
-        return self.active_animation.img if self.active_animation else self.static_img
-    
     def set_action(self, action, force=False):
         if force or action != self.action:
             self.action = action
@@ -87,7 +80,7 @@ class Entity:
             self.active_animation.update(dt)
     
     def render(self, surf, offset=(0, 0)):
-        render_pos = (self.pos[0] - offset[0] + self.anim_offset[0] - self.rotation_offset[0], self.pos[1] - offset[1] + self.anim_offset[1] - self.rotation_offset[1])
+        render_pos = (int(self.pos[0] - offset[0] + self.anim_offset[0] - self.rotation_offset[0]), int(self.pos[1] - offset[1] + self.anim_offset[1] - self.rotation_offset[1]))
         if self.outline:
             outline(surf, self.img, render_pos, self.outline)
         surf.blit(self.img, render_pos)
@@ -121,7 +114,7 @@ class PhysicsEntity(Entity):
         collision_rects = []
         if tilemap:
             tile_rects = tilemap.get_nearby_rects(self.center)
-            collision_rects = tilemap.collision_check(self.physics_rect, tile_rects)
+            collision_rects = collision_check(self.physics_rect, tile_rects)
         for tile_rect in collision_rects:
             if movement[0] > 0:
                 entity_rect.right = tile_rect.left
@@ -131,14 +124,14 @@ class PhysicsEntity(Entity):
                 entity_rect.left = tile_rect.right
                 self.pos[0] = entity_rect.x
                 self.collision_directions['left'] = True
-                                
+                  
         # vertical     
         self.pos[1] += movement[1]
         entity_rect = self.physics_rect
         collision_rects = []
         if tilemap:
             tile_rects = tilemap.get_nearby_rects(self.center)
-            collision_rects = tilemap.collision_check(self.physics_rect, tile_rects)
+            collision_rects = collision_check(self.physics_rect, tile_rects)
         for tile_rect in collision_rects:
             if movement[1] > 0:
                 entity_rect.bottom = tile_rect.top
@@ -149,7 +142,6 @@ class PhysicsEntity(Entity):
                 self.pos[1] = entity_rect.y
                 self.collision_directions['up'] = True  
 
-        
         self.frame_movement = [0, 0]
             
         

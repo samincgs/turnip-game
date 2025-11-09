@@ -1,14 +1,11 @@
-import math
+import os
 import pygame
-from .utils import load_json, save_json, load_spritesheets
-
+from .utils import load_json, save_json, load_img, clip
 
 SPRITESHEET_PATH = 'data/images/spritesheets/'
 TILES_AROUND = [(0, 0), (1, 0), (-1, 0), (0, -1), (1, -1), (-1, -1), (0, 1), (1, 1), (-1, 1)]
 OFFSET_N4 = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 OFFSET_N8 = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
-PHYSICS_TILES = ['bricks']
-AUTOTILE_TYPES = ['bricks']
 AUTOTILE_BORDERS = {
     0: [(0, 1), (1, 0)],
     1: [(-1, 0), (0, 1), (1, 0)],
@@ -28,15 +25,12 @@ class Tilemap:
         
         self.tilemap = {} # { {'5;7' : 0 {{'type': 'grass', 'variant': 0, 'pos': [x, x]}}}}
         self.offgrid_tiles = {} # {0: [{'type': 'grass', 'variant': 0, 'pos': [x, x]}]}
-        self.tiles = load_spritesheets(SPRITESHEET_PATH)
+        self.tiles = self.load_spritesheets(SPRITESHEET_PATH)
+        self.tiles_config = self.load_config()
         
-    def collision_check(self, obj, obj_list):
-        collision_list = []
-        for rect in obj_list:
-            if obj.colliderect(rect):
-                collision_list.append(rect)
-        return collision_list
-    
+        self.physics_tiles = list(self.tiles_config)
+        self.autotile_types = list(self.tiles_config)
+        
     def get_nearby_rects(self, pos):
         rects = []
         tile_pos = (int(pos[0] // self.tile_size), int(pos[1] // self.tile_size))
@@ -45,9 +39,13 @@ class Tilemap:
             str_loc = str(tile_loc[0]) + ';' + str(tile_loc[1])
             if str_loc in self.tilemap:
                 for layer in self.tilemap[str_loc]:
-                    if self.tilemap[str_loc][layer]['type'] in PHYSICS_TILES:
-                        rects.append(pygame.Rect(tile_loc[0] * self.tile_size, tile_loc[1] * self.tile_size, self.tile_size, self.tile_size))
-                           
+                    tile_type = self.tilemap[str_loc][layer]['type']
+                    tile_variant = self.tilemap[str_loc][layer]['variant']
+                    if tile_type in self.physics_tiles:
+                        tile_offset = (0, 0)
+                        if tile_type in self.tiles_config:
+                            tile_offset = self.tiles_config[tile_type]['tile_offsets'][str(tile_variant)]
+                        rects.append(pygame.Rect(tile_loc[0] * self.tile_size + tile_offset[0], tile_loc[1] * self.tile_size + tile_offset[1], self.tile_size - tile_offset[0], self.tile_size - tile_offset[1]))         
         return rects
 
     # left, right, top, bottom
@@ -86,12 +84,12 @@ class Tilemap:
             return True
     
     # make better later
-    def extract(self, filter_func, keep=False, offgrid=True):
+    def extract(self, id_pairs, keep=False, offgrid=True):
         extract_list = []
         if offgrid:
             for layer in self.offgrid_tiles:
                 for tile in self.offgrid_tiles[layer].copy():
-                    if filter_func(tile):
+                    if tile['type'] == id_pairs[0] and tile['variant'] in id_pairs[1]:
                         extract_list.append(tile)
                         if not keep:
                             self.offgrid_tiles[layer].remove(tile)
@@ -99,7 +97,7 @@ class Tilemap:
             for loc in self.tilemap.copy():
                 for layer in self.tilemap[loc].copy():
                     tile = self.tilemap[loc][layer]
-                    if filter_func(tile):
+                    if tile['type'] == id_pairs[0] and tile['variant'] in id_pairs[1]:
                         extract_list.append(tile)
                         if not keep:
                             self.remove_tile(tile)
@@ -140,7 +138,7 @@ class Tilemap:
         if tile_loc in self.tilemap:
             if layer in self.tilemap[tile_loc]:
                 del self.tilemap[tile_loc][layer]
-            # delete tile loc if there is no tile data
+            # delete tile loc if there is no tile data so it doesnt leave a random empty dict
             if not len(self.tilemap[tile_loc]):
                 del self.tilemap[tile_loc]
         
@@ -161,7 +159,11 @@ class Tilemap:
                 if tile_r.collidepoint(curr_mpos):
                     self.offgrid_tiles[layer].remove(tile_data)
     
-    
+    def set_physics_tiles(self, physics_tiles):
+        self.physics_tiles = physics_tiles
+        
+    def set_autotile_types(self, autotile_types):
+        self.autotile_types = autotile_types
     
     def autotile(self, selection_rect, current_layer): # keybinding: t
         if selection_rect: # only with rect
@@ -179,7 +181,7 @@ class Tilemap:
                             str_loc = str(tile_loc[0]) + ';' + str(tile_loc[1])
                             if str_loc in self.tilemap:
                                 if layer in self.tilemap[str_loc]:
-                                    if tile['type'] == self.tilemap[str_loc][layer]['type'] and tile['type'] in AUTOTILE_TYPES:
+                                    if tile['type'] == self.tilemap[str_loc][layer]['type'] and tile['type'] in self.autotile_types:
                                         neighbours.append(offset)
                         neighbours = sorted(neighbours)
                         for border in AUTOTILE_BORDERS:
@@ -214,7 +216,61 @@ class Tilemap:
                 if not self.get_tile_by_layer(b, tile_data['layer']) and tuple(b) not in visited:
                     floodfill_list.append(b)
                     
-       
+    
+    def load_spritesheets(self, path): # loads all spritesheets in a directory and extracts sprites
+
+        CYAN = (0, 255, 255)
+        MAGENTA = (255, 0, 255)
+        
+        spritesheet_dict = {}
+        
+        for img_file in os.listdir(path):
+            if img_file.endswith('.png'): 
+                tile_name = img_file.split('.')[0]  
+                spritesheet_dict[tile_name] = []
+                spritesheet = load_img(os.path.join(path, img_file))
+                
+                y = 1
+                start_x = 1
+                
+                while y < spritesheet.get_height():
+                    tile_end = None
+                    end_x = None
+                    for y2 in range(y, spritesheet.get_height()):
+                        if spritesheet.get_at((start_x, y2))[:3] in {MAGENTA, CYAN}: # MAGENT, CYAN
+                            tile_end = y2 - 1
+                            break
+                    for x2 in range(start_x, spritesheet.get_width()):
+                        if spritesheet.get_at((x2, y))[:3] in {MAGENTA, CYAN}: # MAGENTA or CYAN
+                            end_x = x2 - 1
+                            break
+                    if tile_end is not None and end_x is not None:
+                        width, height = end_x - start_x + 1, tile_end - y + 1
+                        img = clip(spritesheet, (start_x, y), (width, height))
+                        spritesheet_dict[tile_name].append(img)
+                        y = tile_end + 3 
+                    else:
+                        y += 1
+                        
+                if spritesheet.get_at((0, 0)) == CYAN:
+                    if tile_name + '.json' not in os.listdir(path):
+                        tile_variants = len(spritesheet_dict[tile_name])
+                        data = {'tile_offsets': {}}
+                        for i in range(tile_variants):
+                            data['tile_offsets'][i] = [0, 0]
+                        save_json(path + tile_name + '.json', data)
+                                         
+        return spritesheet_dict
+    
+    
+    def load_config(self):
+        tileset_config = {}
+        for tile_json in os.listdir(SPRITESHEET_PATH):
+            name, ext = tile_json.split('.')
+            if ext == 'json':
+                tileset_config[name] = load_json(SPRITESHEET_PATH + tile_json)
+        return tileset_config
+    
     def render_visible(self, surf, offset=(0, 0)):
         render_queue = []
         
@@ -235,7 +291,7 @@ class Tilemap:
         
         for tile in render_queue:
             surf.blit(tile[1], (int(tile[2][0]), int(tile[2][1])))
-
+ 
                         
     def render_all(self, surf, offset=(0, 0)):
         render_queue = []
@@ -244,13 +300,11 @@ class Tilemap:
             tile_layer = self.offgrid_tiles[str(layer)]
             for tile in tile_layer:
                 render_queue.append((int(layer), self.tiles[tile['type']][tile['variant']], (tile['pos'][0] - offset[0], tile['pos'][1] - offset[1])))
-                # surf.blit(tiles[tile['type']][tile['variant']], (tile['pos'][0] - offset[0], tile['pos'][1] - offset[1]))
                 
         for loc in self.tilemap:
             for layer in sorted(int(layer) for layer in self.tilemap[loc]):
                 tile = self.tilemap[loc][str(layer)]
                 render_queue.append((int(layer), self.tiles[tile['type']][tile['variant']], (tile['tile_pos'][0] * self.tile_size - offset[0], tile['tile_pos'][1] * self.tile_size - offset[1])))
-                # surf.blit(tiles[tile['type']][tile['variant']], (tile['tile_pos'][0] * self.tile_size - offset[0], tile['tile_pos'][1] * self.tile_size - offset[1]))
                 
         render_queue.sort(key=lambda x: x[0]) # sort the layer
         

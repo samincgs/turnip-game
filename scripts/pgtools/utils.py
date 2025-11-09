@@ -1,6 +1,7 @@
 import pygame
 import os
 import json
+import math
 
 # load pygame image
 def load_img(path, colorkey=(0, 0, 0), alpha=False):
@@ -111,66 +112,21 @@ def normalize(vel, amt, target=0):
         return min(vel + amt, target)
     return target
 
-def follow_target(val, target, lag):
-    val += (target - val) / lag 
-    return val
+def collision_check(obj, obj_list):
+    collision_list = []
+    for rect in obj_list:
+        if obj.colliderect(rect):
+            collision_list.append(rect)
+    return collision_list
 
-def load_spritesheets(path):
-        """Loads all spritesheets in a directory and extracts sprites."""
-        
-        CYAN = (0, 255, 255)
-        MAGENTA = (255, 0, 255)
-        
-        spritesheet_dict = {}
-        tileset_config = {}
-        
-        for img_file in os.listdir(path):
-            if img_file.endswith('.png'): 
-                tile_name = img_file.split('.')[0]  
-                spritesheet_dict[tile_name] = []
-                
-                spritesheet = load_img(os.path.join(path, img_file))
-                
-                y = 1
-                start_x = 1
-                
-                
-                while y < spritesheet.get_height():
-                    tile_end = None
-                    end_x = None
-                    
-                    for y2 in range(y, spritesheet.get_height()):
-                        if spritesheet.get_at((start_x, y2))[:3] in {MAGENTA, CYAN}: # MAGENT, CYAN
-                            tile_end = y2 - 1
-                            break
-                    
-                    for x2 in range(start_x, spritesheet.get_width()):
-                        if spritesheet.get_at((x2, y))[:3] in {MAGENTA, CYAN}: # MAGENTA or CYAN
-                            end_x = x2 - 1
-                            break
-                        
-                    
-                    if tile_end is not None and end_x is not None:
-                        width, height = end_x - start_x + 1, tile_end - y + 1
-                        img = clip(spritesheet, (start_x, y), (width, height))
+def get_angle(entity, target):
+    try:
+        return math.atan2(target.center[1] - entity.center[1], target.center[0] - entity.center[0])
+    except:
+        return math.atan2(target[1] - entity.pos[1], target[0] - entity.pos[0])
 
-                        spritesheet_dict[tile_name].append(img)
-
-                        y = tile_end + 3 
-
-                    else:
-                        y += 1
-                        
-                if spritesheet.get_at((0, 0)) == CYAN:
-                    if tile_name + '.json' not in os.listdir(path):
-                        tile_variants = len(spritesheet_dict[tile_name])
-                        data = {'tile_offsets': {}}
-                        for i in range(tile_variants):
-                            data['tile_offsets'][i] = [0, 0]
-                        save_json(path + tile_name + '.json', data)
-        
-
-                
-                
-                                
-        return spritesheet_dict
+def get_distance(entity, target): # order of x, y doesnt matter because it calculates a linear distance and is being squared
+    try:
+        return math.sqrt((target.pos[0] - entity.pos[0]) ** 2 + (target.pos[1] - entity.pos[1]) ** 2)
+    except:
+        return math.sqrt((target[0] - entity.pos[0]) ** 2 + (target[1] - entity.pos[1]) ** 2)

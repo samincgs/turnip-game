@@ -6,7 +6,6 @@ from tkinter import filedialog
 
 from ..tilemap import Tilemap
 from ..font import Font
-from ..utils import load_spritesheets
 
 class LevelEditor:
     def __init__(self):
@@ -24,7 +23,7 @@ class LevelEditor:
         
         self.tilemap = Tilemap(self, tile_size=8)
         
-        self.spritesheet_data = load_spritesheets('data/images/spritesheets/')
+        self.spritesheet_data = self.tilemap.load_spritesheets('data/images/spritesheets/')
             
         self.font = Font('data/fonts/main_font.png', (208, 223, 215))
         

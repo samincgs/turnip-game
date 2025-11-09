@@ -54,7 +54,7 @@ class AnimationManager:
         self.animations = {}
         self.generate_configs() # save config if it isnt there
         self.load_configs()
-        
+            
     def load_configs(self):
         # load animations
         for entity_id in os.listdir(ANIMATIONS_PATH):
