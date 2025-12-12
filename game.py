@@ -8,11 +8,12 @@ from scripts.player import Player
 from scripts.key import Key
 from scripts.hud import HUD
 from scripts.turret import Turret
+from scripts.mole import Mole
 
 RESOLUTION = (240, 160)
 RENDER_SCALE = 3
 TILE_SIZE = 8
-PLAYER_SIZE = (4, 7)
+PLAYER_SIZE = (4, 8)
 
 class Game:
     def __init__(self):
@@ -29,7 +30,7 @@ class Game:
         self.input = pt.Input(RENDER_SCALE) 
         self.vfx = pt.VFX(self)
         self.particle_manager = pt.ParticleManager()
-        self.camera = pt.Camera(self.display.get_size(), lag=20)
+        self.camera = pt.Camera(self.display.get_size(), tile_size=TILE_SIZE, lag=20)
         self.hud = HUD(self)
         
         self.misc_images = pt.utils.load_imgs_dict('data/images/misc')
@@ -45,14 +46,21 @@ class Game:
     
     def spawn_entities(self):
         self.keys = []
+        self.turrets = []
+        self.enemies = []
+        
+        
         keys = self.tilemap.extract(('spawners', (1,)), False, True)
         for key in keys:
             self.keys.append(Key(self, key['pos'], (5, 9)))
             
-        self.turrets = []
         turrets = self.tilemap.extract(('spawners', (3,)), False, True)
         for turret in turrets:
             self.turrets.append(Turret(self, turret['pos'], (12, 6)))
+            
+        moles = self.tilemap.extract(('spawners', (4,)), False, False)
+        for mole in moles:
+            self.enemies.append(Mole(self, mole['pos'], (6, 5)))
     
     def load_level(self, level):
         self.tilemap.load_map(f'data/maps/map_{level}.json')
@@ -87,7 +95,7 @@ class Game:
             
             if self.transition != 0:
                 self.transition =  min(self.transition + 1, 50)
-                if (self.transition >= 50) and (self.player.pos[1] >= self.camera.scroll[1] + self.display.get_height()) and (self.player.dead):
+                if (self.transition >= 50) and self.player.dead:
                     self.load_level(self.level)
                 elif (self.transition >= 50) and self.door_entered:
                     self.level += 1
@@ -112,14 +120,14 @@ class Game:
             door = self.door
             door_img = self.tilemap.tiles[door['type']][door['variant']]
             door_rect = pygame.Rect(door['pos'][0], door['pos'][1], 7, 11)
-            if (self.player.rect.collidepoint(door_rect.center)) and (self.transition == 0) and (self.keys_collected == len(self.keys)):
+            if (self.player.rect.collidepoint(door_rect.center)) and not self.transition and (self.keys_collected == len(self.keys)):
                 self.transition = max(self.transition, 1)
                 self.door_entered = True  
-            if self.master_clock // 40 % 4 > 0 and (self.keys_collected == len(self.keys)):
+            if self.master_clock // 20 % 4 > 0 and (self.keys_collected == len(self.keys)):
                 pt.utils.outline(self.display, door_img, (int(door['pos'][0] - self.camera.pos[0]), int(door['pos'][1] - self.camera.pos[1])))
             self.display.blit(door_img, (int(door['pos'][0] - self.camera.pos[0]), int(door['pos'][1] - self.camera.pos[1])))
             
-            self.tilemap.render_visible(self.display, offset=self.camera.pos)
+            self.tilemap.render_visible(self.display, visible_range=self.camera.get_visible_screen, offset=self.camera.pos)
             
             for rock in self.rocks.copy(): # pos, speed, img
                 rock[0][1] += rock[1]
@@ -147,11 +155,14 @@ class Game:
                 turret.update(self.dt) 
                 turret.render(self.display, offset=self.camera.pos)
 
-            for torch in self.tilemap.extract(('test', (0, )), True):
+            for torch in self.tilemap.extract(('torches', (0, )), True):
                 pt.utils.glow_blit(self.display, loc=(torch['pos'][0] - self.camera.pos[0] - 15 + 5, torch['pos'][1] - self.camera.pos[1] - 15 + 3), radius=15, glow_color=(3, 7, 23))
                 pt.utils.glow_blit(self.display, loc=(torch['pos'][0] - self.camera.pos[0] - 27 + 5, torch['pos'][1] - self.camera.pos[1] - 27 + 3), radius=27, glow_color=(3, 7, 23))
                 self.particle_manager.particles.append(pt.Particle(self, (torch['pos'][0] + 5, torch['pos'][1] + 3), (4 + random.random() * -8, -4 + random.random() * -8), 'particles', decay_rate=1.7 + random.random(), start_frame=2 + random.random() * 3, glow=(3, 3 + random.randint(1, 3), 8 + random.randint(1, 6)), glow_radius=3 + random.random() * 6))
 
+            for mole in self.enemies:
+                mole.update(self.dt)
+                mole.render(self.display, offset=self.camera.pos)
             
             self.player.update()
             self.player.render(self.display, offset=(self.camera.float_pos[0] + clamped[0], self.camera.float_pos[1] + clamped[1]))

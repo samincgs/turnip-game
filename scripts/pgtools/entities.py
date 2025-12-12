@@ -1,6 +1,6 @@
 import pygame
 
-from .utils import outline, collision_check
+from .utils import outline, collision_check, normalize
 
 class Entity:
     def __init__(self, game, pos, size, e_type):
@@ -89,10 +89,13 @@ class PhysicsEntity(Entity):
     def __init__(self, game, pos, size, e_type):
         super().__init__(game, pos, size, e_type)
         self.speed = 0
+        self.gravity = 0
         self.velocity = [0, 0]
         self.acceleration = [0, 0]
         self.frame_movement = [0, 0]
         self.last_movement = [0, 0]
+        self.terminal_velocity = [0, 0]
+        self.velocity_normalization = [0, 0]
         
         self.collision_directions = {'up': False, 'down': False, 'right': False, 'left': False}
 
@@ -105,6 +108,30 @@ class PhysicsEntity(Entity):
         self.frame_movement[1] += movement[1] * dt
         self.last_movement = self.frame_movement.copy()
     
+    def physics_update(self, dt, tilemap):
+        
+        self.velocity[0] += self.acceleration[0]
+        self.velocity[1] += self.acceleration[1]
+        self.velocity[1] += self.gravity
+        
+        self.velocity[0] = normalize(self.velocity[0], self.velocity_normalization[0])
+        self.velocity[1] = normalize(self.velocity[1], self.velocity_normalization[1])
+        
+        self.velocity[0] = max(-self.terminal_velocity[0], min(self.velocity[0], self.terminal_velocity[0]))
+        self.velocity[1] = max(-self.terminal_velocity[1], min(self.velocity[1], self.terminal_velocity[1]))
+
+        self.frame_movement[0] += self.velocity[0]
+        self.frame_movement[1] += self.velocity[1]
+        
+        if self.frame_movement[0] < 0:
+            self.flip[0] = True
+        if self.frame_movement[0] > 0:
+            self.flip[0] = False
+        
+        self.physics_movement(tilemap, self.frame_movement)
+        
+        self.frame_movement = [0, 0]
+        
     def physics_movement(self, tilemap, movement=(0, 0)):
         self.collision_directions = {'up': False, 'down': False, 'right': False, 'left': False}
         
@@ -114,7 +141,7 @@ class PhysicsEntity(Entity):
         collision_rects = []
         if tilemap:
             tile_rects = tilemap.get_nearby_rects(self.center)
-            collision_rects = collision_check(self.physics_rect, tile_rects)
+            collision_rects = collision_check(entity_rect, tile_rects)
         for tile_rect in collision_rects:
             if movement[0] > 0:
                 entity_rect.right = tile_rect.left
@@ -131,7 +158,7 @@ class PhysicsEntity(Entity):
         collision_rects = []
         if tilemap:
             tile_rects = tilemap.get_nearby_rects(self.center)
-            collision_rects = collision_check(self.physics_rect, tile_rects)
+            collision_rects = collision_check(entity_rect, tile_rects)
         for tile_rect in collision_rects:
             if movement[1] > 0:
                 entity_rect.bottom = tile_rect.top
@@ -140,10 +167,7 @@ class PhysicsEntity(Entity):
             if movement[1] < 0:
                 entity_rect.top = tile_rect.bottom
                 self.pos[1] = entity_rect.y
-                self.collision_directions['up'] = True  
-
-        self.frame_movement = [0, 0]
-            
+                self.collision_directions['up'] = True              
         
                     
             

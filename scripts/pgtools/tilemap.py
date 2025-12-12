@@ -271,16 +271,16 @@ class Tilemap:
                 tileset_config[name] = load_json(SPRITESHEET_PATH + tile_json)
         return tileset_config
     
-    def render_visible(self, surf, offset=(0, 0)):
+    def render_visible(self, surf, visible_range=(0, 0), offset=(0, 0)):
         render_queue = []
         
         for layer in sorted(int(layer) for layer in self.offgrid_tiles): 
             tile_layer = self.offgrid_tiles[str(layer)]
             for tile in tile_layer:
                 render_queue.append((int(layer), self.tiles[tile['type']][tile['variant']], (tile['pos'][0] - offset[0], tile['pos'][1] - offset[1])))
-                
-        for y in range(int(offset[1] // self.tile_size), int((offset[1] + surf.get_height()) // self.tile_size) + 1):
-            for x in range(int(offset[0] // self.tile_size), int((offset[0] + surf.get_width()) // self.tile_size) + 1):
+        
+        for y in range(visible_range[1]):
+            for x in range(visible_range[0]):
                 tile_loc = str(x) + ';' + str(y)
                 if tile_loc in self.tilemap:
                     for layer in sorted(int(layer) for layer in self.tilemap[tile_loc]):

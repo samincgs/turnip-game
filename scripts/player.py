@@ -1,5 +1,6 @@
 import random
 import math
+import pygame
 
 import scripts.pgtools as pt
 
@@ -9,7 +10,8 @@ class Player(pt.PhysicsEntity):
         self.air_timer = 0
         self.speed = 1.2
         self.max_jumps = 2
-        self.acceleration = [0, 0]
+        self.gravity = 0.1
+        self.terminal_velocity = [0.009, 3]
         self.jumps = self.max_jumps
         self.dead = False
         self.target_rot = 0
@@ -27,18 +29,12 @@ class Player(pt.PhysicsEntity):
             self.velocity[1] = -6
             for i in range(60):
                 self.game.vfx.sparks.append(pt.Spark(self.center, random.random() * math.pi * 2, 120 + random.random() * 60, 100 + random.random() * 50))
-                self.game.particle_manager.particles.append(pt.Particle(self.game, self.center, (150 + random.random() * -300, 150 + random.random() * -300), 'particles', 2 + random.random() * 2, random.randint(1, 3), custom_color=random.choice([(245, 240, 201), (245, 240, 201), (245, 240, 201), (139, 232, 47), (38, 191, 30)])))
+                self.game.particle_manager.particles.append(pt.Particle(self.game, self.center, (150 + random.random() * -300, 150 + random.random() * -300), 'particles', start_frame=2 + random.random(), decay_rate=random.randint(1, 3), custom_color=random.choice([(245, 240, 201), (245, 240, 201), (245, 240, 201), (139, 232, 47), (38, 191, 30)])))
         self.dead = True
                  
     def update(self):
         super().update(1/60)
-                
-        if not self.dead:
-            self.velocity[1] = min(3, self.velocity[1] + 0.1)
-        else:
-            self.velocity[1] = min(4, self.velocity[1] + 0.25)
-            
-        self.velocity[0] = pt.utils.normalize(self.velocity[0], 0.009)
+
         self.air_timer += 1
         
         self.rotation = pt.utils.normalize(self.rotation, 5, self.target_rot)
@@ -53,16 +49,6 @@ class Player(pt.PhysicsEntity):
                     self.velocity[1] = -1.85
                     self.air_timer = 5
                     self.jumps -= 1
-        
-        self.frame_movement[0] += self.velocity[0]
-        self.frame_movement[1] += self.velocity[1]
-        
-                
-        if not self.dead:
-            if self.frame_movement[0] > 0:
-                self.flip[0] = False
-            if self.frame_movement[0] < 0:
-                self.flip[0] = True
             
         if self.air_timer >= 5:
             self.set_action('jump')
@@ -72,7 +58,7 @@ class Player(pt.PhysicsEntity):
             else:
                 self.set_action('idle')
         
-        self.physics_movement(self.game.tilemap if not self.dead else None, self.frame_movement)
+        self.physics_update(1/60, self.game.tilemap if not self.dead else None)
         if self.collision_directions['down'] or self.collision_directions['up']:
             self.velocity[1] = 0
         if self.collision_directions['down']:
@@ -86,6 +72,7 @@ class Player(pt.PhysicsEntity):
             
     def render(self, surf, offset=(0, 0)):
         super().render(surf, offset=offset)
+        # pygame.draw.rect(surf, (255, 0, 0), pygame.Rect(self.pos[0] - offset[0], self.pos[1] - offset[1], *self.size))
         
         
     

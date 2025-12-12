@@ -21,9 +21,10 @@ class ParticleManager:
             particle.render(surf, offset=offset)
 
 class Particle(Entity):
-    def __init__(self, game, pos, velocity, p_type, decay_rate=0.1, start_frame=0, custom_color=None, physics=None, glow=None, glow_radius=None):
+    def __init__(self, game, pos, velocity, p_type, gravity=0, decay_rate=0.1, start_frame=0, custom_color=None, physics=None, glow=None, glow_radius=None):
         super().__init__(game, pos, (1, 1), p_type)
         self.velocity = list(velocity)
+        self.gravity = gravity
         self.decay_rate = decay_rate
         self.frame = start_frame
         self.custom_color = custom_color
@@ -39,19 +40,23 @@ class Particle(Entity):
         return self.active_animation.images[int(self.frame)]
     
     def update(self, dt):
-        
+                
         if not self.physics:
             self.pos[0] += self.velocity[0] * dt
             self.pos[1] += self.velocity[1] * dt
+            self.velocity[1] += self.gravity
         else:
             self.pos[0] += self.velocity[0] * dt
             if self.physics.tile_collide(self.pos):
                 self.velocity[0] *= -0.7
                 self.velocity[1] *= 0.8
             self.pos[1] += self.velocity[1] * dt
-            if self.physics and self.physics.tile_collide(self.pos):
+            if self.physics.tile_collide(self.pos):
                 self.velocity[0] *= 0.8
                 self.velocity[1] *= -0.7
+            else:
+                self.velocity[1] += self.gravity
+                
 
         
         self.frame += self.decay_rate * dt

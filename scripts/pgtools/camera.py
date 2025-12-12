@@ -2,8 +2,9 @@ import math
 import pygame
 
 class Camera:
-    def __init__(self, display_size, lag=20):
+    def __init__(self, display_size, tile_size=16, lag=20):
         self.display_size = display_size
+        self.tile_size = tile_size
         self.lag = lag
         
         self.targeted_entity = None
@@ -12,7 +13,7 @@ class Camera:
 
     @property
     def pos(self):
-        return (int(math.floor(self.scroll[0])), int(math.floor(self.scroll[1])))
+        return (int(self.scroll[0]), int(self.scroll[1]))
     
     @property
     def float_pos(self):
@@ -32,9 +33,12 @@ class Camera:
     
     @property
     def target(self):
-        target_loc = self.entity_location
-        return target_loc
+        return self.entity_location
     
+    @property
+    def get_visible_screen(self):
+        return (int((self.pos[0] + self.display_size[0]) // self.tile_size) + 1), (int((self.pos[1] + self.display_size[1]) // self.tile_size) + 1)
+        
     def follow_target(self, val, target, lag):
         val += (target - val) / lag 
         return val

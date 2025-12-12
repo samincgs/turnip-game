@@ -1,0 +1,13 @@
+{
+  "id": "mole",
+  "animations": {
+    "idle": {
+      "type": "idle",
+      "frames": [5],
+      "loop": false,
+      "speed": 1.0,
+      "offset": [-1, -2],
+      "outline": null
+    }
+  }
+}
