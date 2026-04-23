@@ -41,7 +41,7 @@ class Entity:
     
     @property
     def rect(self):
-        return pygame.Rect(self.pos[0], self.pos[1], self.size[0], self.size[1])
+        return pygame.FRect(self.pos[0], self.pos[1], self.size[0], self.size[1])
     
     @property
     def animations(self):
@@ -99,10 +99,6 @@ class PhysicsEntity(Entity):
         
         self.collision_directions = {'up': False, 'down': False, 'right': False, 'left': False}
 
-    @property
-    def physics_rect(self):
-        return pygame.FRect(self.pos[0], self.pos[1], self.size[0], self.size[1])
-    
     def move(self, movement, dt):
         self.frame_movement[0] += movement[0] * dt
         self.frame_movement[1] += movement[1] * dt
@@ -137,7 +133,7 @@ class PhysicsEntity(Entity):
         
         # horizontal
         self.pos[0] += movement[0]
-        entity_rect = self.physics_rect
+        entity_rect = self.rect
         collision_rects = []
         if tilemap:
             tile_rects = tilemap.get_nearby_rects(self.center)
@@ -154,7 +150,7 @@ class PhysicsEntity(Entity):
                   
         # vertical     
         self.pos[1] += movement[1]
-        entity_rect = self.physics_rect
+        entity_rect = self.rect
         collision_rects = []
         if tilemap:
             tile_rects = tilemap.get_nearby_rects(self.center)

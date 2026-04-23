@@ -8,7 +8,7 @@ class Player(pt.PhysicsEntity):
     def __init__(self, game, pos, size):
         super().__init__(game, pos, size, 'player')
         self.air_timer = 0
-        self.speed = 1.2
+        self.speed = 1.1
         self.max_jumps = 2
         self.gravity = 0.1
         self.terminal_velocity = [0.009, 3]
@@ -40,16 +40,29 @@ class Player(pt.PhysicsEntity):
         self.rotation = pt.utils.normalize(self.rotation, 5, self.target_rot)
         if not self.dead and not self.game.door_entered:
             if self.game.input.holding('right'):
+                if not self.game.hud.input_check['right']:
+                    self.game.hud.input_check['right'] = True
+                    self.game.hud.input_check['left'] = True
+                    self.game.hud.input_check['jump'] = True
                 self.frame_movement[0] += self.speed
             if self.game.input.holding('left'):
+                if not self.game.hud.input_check['left']:
+                    self.game.hud.input_check['right'] = True
+                    self.game.hud.input_check['left'] = True
+                    self.game.hud.input_check['jump'] = True
                 self.frame_movement[0] -= self.speed
             if self.game.input.pressing('jump'):
+                if not self.game.hud.input_check['jump']:
+                    self.game.hud.input_check['right'] = True
+                    self.game.hud.input_check['left'] = True
+                    self.game.hud.input_check['jump'] = True
                 if self.jumps:
                     self.game.vfx.add_anim((self.pos[0] - 3, self.pos[1] - 4), 'jump_anim')
-                    self.velocity[1] = -1.85
+                    self.velocity[1] = -1.9
                     self.air_timer = 5
                     self.jumps -= 1
-            
+        
+        
         if self.air_timer >= 5:
             self.set_action('jump')
         else:
@@ -67,8 +80,6 @@ class Player(pt.PhysicsEntity):
         
         if self.hit:
             self.die()
-            
-        
             
     def render(self, surf, offset=(0, 0)):
         super().render(surf, offset=offset)

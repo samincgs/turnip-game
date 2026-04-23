@@ -1,6 +1,3 @@
-# add more decor
-# add enemies moving left and right on tiles
-# add turret tossing projectiles
-# add vfx
-# add sound effect 
+# add sound effects
 # add more levels
+# add background vfx

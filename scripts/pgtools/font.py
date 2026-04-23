@@ -42,7 +42,7 @@ class Font:
         outline_font.render(surf, text, (loc[0] + spacing[0], loc[1] + spacing[1]))
         self.render(surf, text, loc)
         
-    def render(self, surf, text, loc, line_width=0):
+    def render(self, surf, text, loc, line_width=0, color=None):
         
         if line_width: # add line width and modify text before rendering
             curr_width = 0
@@ -60,7 +60,8 @@ class Font:
         loc = list(loc)
         for char in text:
             if char not in [' ', '\n']:
-                surf.blit(self.characters[char], (loc[0] + x_offset, loc[1]))
+                letter_text = self.characters[char] if not color else palette_swap(self.characters[char].copy(), self.font_color, color)
+                surf.blit(letter_text, (loc[0] + x_offset, loc[1]))
                 x_offset += self.characters[char].get_width() + self.spacing
             elif char == ' ':
                 x_offset += self.base_size[0]

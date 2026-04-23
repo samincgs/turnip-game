@@ -6,17 +6,6 @@ SPRITESHEET_PATH = 'data/images/spritesheets/'
 TILES_AROUND = [(0, 0), (1, 0), (-1, 0), (0, -1), (1, -1), (-1, -1), (0, 1), (1, 1), (-1, 1)]
 OFFSET_N4 = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 OFFSET_N8 = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)]
-AUTOTILE_BORDERS = {
-    0: [(0, 1), (1, 0)],
-    1: [(-1, 0), (0, 1), (1, 0)],
-    2: [(-1, 0), (0, 1)],
-    3: [(-1, 0), (0, -1), (0, 1)],
-    4: [(-1, 0), (0, -1)],
-    5: [(-1, 0), (0, -1), (1, 0)],
-    6: [(0, -1), (1, 0)],
-    7: [(0, -1), (0, 1), (1, 0)],
-    8: [(-1, 0), (0, -1), (0, 1), (1, 0)]
-}
 
 class Tilemap:
     def __init__(self, game, tile_size=16):
@@ -48,6 +37,13 @@ class Tilemap:
                         rects.append(pygame.Rect(tile_loc[0] * self.tile_size + tile_offset[0], tile_loc[1] * self.tile_size + tile_offset[1], self.tile_size - tile_offset[0], self.tile_size - tile_offset[1]))         
         return rects
 
+    def get_spritesheet_imgs(self, id_pairs): # id_pairs = ('spawner', (1, 2))
+        tile_type, variants = id_pairs
+        imgs = [self.tiles[tile_type][v] for v in variants]
+        if len(imgs) == 1:
+            return imgs[0]
+        return imgs
+    
     # left, right, top, bottom
     def get_map_edges(self):
         edges = [99999, -99999, 99999, -99999]
@@ -83,7 +79,6 @@ class Tilemap:
         if tile_loc in self.tilemap:
             return True
     
-    # make better later
     def extract(self, id_pairs, keep=False, offgrid=True):
         extract_list = []
         if offgrid:
@@ -104,6 +99,13 @@ class Tilemap:
         
         return extract_list
             
+    def load_entity(self, entity_cls, id_pairs, size, offgrid=True):
+        entity_list = []
+        entity_data = self.extract(id_pairs, offgrid=offgrid)
+        for entity in entity_data:
+            entity_list.append(entity_cls(self.game, entity['pos'], size))       
+        return entity_list 
+    
     def load_map(self, path):
         map_data = load_json(path)
         
@@ -164,58 +166,6 @@ class Tilemap:
         
     def set_autotile_types(self, autotile_types):
         self.autotile_types = autotile_types
-    
-    def autotile(self, selection_rect, current_layer): # keybinding: t
-        if selection_rect: # only with rect
-            for loc in self.tilemap:
-                for layer in (int(layer) for layer in self.tilemap[loc]):
-                    layer = str(layer)
-                    if current_layer == layer:
-                        layer = str(layer)
-                        tile = self.tilemap[loc][layer]
-                        neighbours = []
-                        for offset in OFFSET_N4:
-                            tile_loc = (tile['tile_pos'][0] + offset[0], tile['tile_pos'][1] + offset[1])
-                            if not selection_rect.collidepoint((tile_loc[0] * self.tile_size, tile_loc[1] * self.tile_size)):  # only with rect
-                                continue  
-                            str_loc = str(tile_loc[0]) + ';' + str(tile_loc[1])
-                            if str_loc in self.tilemap:
-                                if layer in self.tilemap[str_loc]:
-                                    if tile['type'] == self.tilemap[str_loc][layer]['type'] and tile['type'] in self.autotile_types:
-                                        neighbours.append(offset)
-                        neighbours = sorted(neighbours)
-                        for border in AUTOTILE_BORDERS:
-                            border_list = sorted(AUTOTILE_BORDERS[border])
-                            if neighbours == border_list:
-                                tile['variant'] = border
-    
-    
-    def floodfill(self, curr_pos, tile_data, offset=(0, 0)):
-        floodfill_list = [curr_pos]
-        visited = set()
-        
-        MAX_TILES = 200
-        
-        while floodfill_list:            
-            tile = floodfill_list.pop(0)
-            
-            if tuple(tile) in visited:
-                continue
-            
-            visited.add(tuple(tile))
-            
-            if len(floodfill_list) > MAX_TILES:
-                return
-                
-            scaled_mpos = (tile[0] + offset[0] * self.tile_size, tile[1] + offset[1] * self.tile_size)
-            tile_data = {'type': tile_data['type'], 'variant': tile_data['variant'], 'pos': scaled_mpos, 'tile_pos': tuple(tile), 'layer': tile_data['layer']}
-            self.add_tile(tile_data)
-            
-            bordering_tiles = [[tile[0] + 1, tile[1]], [tile[0] - 1, tile[1]], [tile[0], tile[1] + 1], [tile[0], tile[1] - 1]]
-            for b in bordering_tiles:
-                if not self.get_tile_by_layer(b, tile_data['layer']) and tuple(b) not in visited:
-                    floodfill_list.append(b)
-                    
     
     def load_spritesheets(self, path): # loads all spritesheets in a directory and extracts sprites
 

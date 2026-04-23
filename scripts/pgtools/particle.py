@@ -34,7 +34,6 @@ class Particle(Entity):
         
         self.despawn = False
         
-    
     @property
     def img(self):
         return self.active_animation.images[int(self.frame)]
