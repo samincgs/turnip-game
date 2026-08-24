@@ -7,7 +7,7 @@
       "loop": false,
       "speed": 1.0,
       "offset": [-1, -2],
-      "outline": null
+      "outline": [8, 10, 20]
     }
   }
 }

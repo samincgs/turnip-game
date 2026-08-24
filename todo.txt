@@ -1,3 +1,4 @@
 # add sound effects
 # add more levels
-# add background vfx
+# add music
+# add outside blue sky and green tiles to signify escape and win state

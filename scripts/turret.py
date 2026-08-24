@@ -12,6 +12,7 @@ class Turret(pt.Entity):
         self.turret_handle_img = self.game.misc_images['turret_handle']
         self.rotated_turret_handle_img = self.turret_handle_img.copy()
         self.turret_handle_rot = 0
+        self.can_shoot = True
     
     @property
     def handle_tip(self):
@@ -23,14 +24,17 @@ class Turret(pt.Entity):
         player_angle = math.atan2(player.center[1] - self.center[1] + 2, player.center[0] - self.center[0])
         self.turret_handle_rot = player_angle
         
-        if random.randint(1, 300) == 1:
-            speed = 1 + random.random() * 0.7
-            self.game.projectiles.append([list(self.handle_tip), self.turret_handle_rot, speed, 0])
-            # turret gun sparks
-            for angle in [40, -40, 0]:
-                speed = 70 + random.random() * 30
-                angle = player_angle + math.radians(angle)
-                self.game.vfx.sparks.append(pt.Spark(self.handle_tip, angle, speed, decay_rate = 200 + random.random() * 40))
+        if (self.game.hud.instruction_index >= self.game.hud.instruction_len) and (not self.game.show_door[0]):
+            if random.randint(1, 160) == 1 and self.can_shoot:
+                speed = 1 + random.random() * 0.7
+                self.game.projectiles.append([list(self.handle_tip), self.turret_handle_rot, speed, 0])
+                self.game.sounds['shoot'].play()
+                
+                # turret gun sparks
+                for angle in [40, -40, 0]:
+                    speed = 70 + random.random() * 30
+                    angle = player_angle + math.radians(angle)
+                    self.game.vfx.sparks.append(pt.Spark(self.handle_tip, angle, speed, decay_rate = 200 + random.random() * 40))
                 
         if self.rect.colliderect(player.rect):
             player.die()

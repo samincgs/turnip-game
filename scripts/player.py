@@ -38,7 +38,7 @@ class Player(pt.PhysicsEntity):
         self.air_timer += 1
         
         self.rotation = pt.utils.normalize(self.rotation, 5, self.target_rot)
-        if not self.dead and not self.game.door_entered:
+        if (not self.dead) and (not self.game.door_entered) and (not self.game.show_door[0]):
             if self.game.input.holding('right'):
                 if not self.game.hud.input_check['right']:
                     self.game.hud.input_check['right'] = True
@@ -57,11 +57,13 @@ class Player(pt.PhysicsEntity):
                     self.game.hud.input_check['left'] = True
                     self.game.hud.input_check['jump'] = True
                 if self.jumps:
+                    self.game.sounds['jump'].play()
                     self.game.vfx.add_anim((self.pos[0] - 3, self.pos[1] - 4), 'jump_anim')
                     self.velocity[1] = -1.9
                     self.air_timer = 5
                     self.jumps -= 1
-        
+            if self.game.input.pressing('1'): #TODO: debug remove
+                 self.game.keys_collected = 3
         
         if self.air_timer >= 5:
             self.set_action('jump')
@@ -70,6 +72,11 @@ class Player(pt.PhysicsEntity):
                 self.set_action('run')
             else:
                 self.set_action('idle')
+        
+        if self.frame_movement[0] != 0:
+            if random.random() < 0.7:
+                self.game.particle_manager.particles.append(pt.Particle(self.game, (self.rect.bottomleft[0] + random.random() * 2, self.rect.bottomleft[1] - random.random()), (25 + random.random() * 25 * -1 if self.flip[0] else 1, -5 + random.random() * -30), 'particles', start_frame=5 + random.random(), decay_rate=1 + random.random() * 1, custom_color=(245, 240, 201), glow_radius=3, glow=(7, 12, 21)))
+            
         
         self.physics_update(1/60, self.game.tilemap if not self.dead else None)
         if self.collision_directions['down'] or self.collision_directions['up']:

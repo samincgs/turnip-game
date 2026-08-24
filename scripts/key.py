@@ -20,6 +20,7 @@ class Key(pt.Entity):
             self.pos[1] = self.base_y + math.sin(self.random_shift + self.game.master_clock * 0.05) * 3 
         
         if not self.collected and self.game.player.rect.colliderect(self.rect):
+            self.game.sounds['key_pickup'].play()
             self.game.vfx.circles.append(pt.Circle(self.game, self.center, 2.75, 8, (47, 91, 128), 15, 0.6))
             self.game.vfx.circles.append(pt.Circle(self.game, self.center, 2.5, 2, (255, 255, 255), 6, 0.6))
             self.collected = True

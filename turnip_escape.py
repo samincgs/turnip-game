@@ -14,8 +14,10 @@ from scripts.mole import Mole
 RESOLUTION = (240, 160)
 RENDER_SCALE = 3
 TILE_SIZE = 8
-
-LEVEL_TIMERS = [30, 40]
+LEVEL_TIMERS = {
+    'map_0': 30,
+    'map_1': 40
+}
 
 class Game:
     def __init__(self):
@@ -24,6 +26,7 @@ class Game:
         self.screen = pygame.display.set_mode((RESOLUTION[0] * RENDER_SCALE, RESOLUTION[1] * RENDER_SCALE))
         self.display = pygame.Surface((RESOLUTION[0], RESOLUTION[1]))
         self.ui_display = pygame.Surface(self.display.get_size(), pygame.SRCALPHA)
+        
         pygame.display.set_caption('turnip escape')
         self.clock = pygame.time.Clock()
         
@@ -33,63 +36,88 @@ class Game:
         
         self.vfx = pt.VFX(self)
         self.particle_manager = pt.ParticleManager()
-        self.camera = pt.Camera(self.display.get_size(), tile_size=TILE_SIZE, lag=20)
+        self.camera = pt.Camera(self.display.get_size(), tile_size=TILE_SIZE, lag=30)
         self.hud = HUD(self)
         
         self.misc_images = pt.utils.load_imgs_dict('data/images/misc')
         self.fallen_rock_imgs = pt.utils.load_imgs('data/images/falling_rocks')
-
+        
+        self.sounds = pt.utils.load_sounds('data/sfx/')
+        self.sounds['jump'].set_volume(0.1)
+        self.sounds['key_pickup'].set_volume(0.3)
+        self.sounds['shoot'].set_volume(0.2)
+        
         self.master_clock = 0
         self.dt = 0
         self.level = 0
+        self.show_door = [0, False]
         
         self.load_level(self.level)
         
     def load_level(self, level):
         self.tilemap.load_map(f'data/maps/map_{level}.json')
-        
+                
         self.transition = -60
         self.keys_collected = 0
         self.reset_timer = 15
-        self.timer = LEVEL_TIMERS[self.level]
+        self.timer = LEVEL_TIMERS[f'map_{level}']
 
         self.door_entered = False
+        self.show_door = [0, False]
 
-        self.player = Player(self, self.tilemap.extract(('spawners', (0, )), False, False)[0]['pos'], (4, 8))
+        self.player = Player(self, self.tilemap.extract(('spawners', (0, )), keep=False, offgrid=True)[0]['pos'], (4, 8))
         self.camera.set_target(self.player)
         
-        self.falling_rocks = self.tilemap.extract(('decor', (0, 1)), True)
-        self.door = self.tilemap.extract(('spawners', (2,)), keep=False)[0]
+        self.falling_rocks = self.tilemap.extract(('decor', (0, 1)), keep=True, offgrid=True)
+        self.door = self.tilemap.extract(('spawners', (2,)), keep=False, offgrid=True)[0]
         
         self.keys = self.tilemap.load_entity(Key, ('spawners', {1}), (5, 9))
         self.turrets = self.tilemap.load_entity(Turret, ('spawners', {3}), (12, 6))
         self.enemies = self.tilemap.load_entity(Mole, ('spawners', {4}), (6, 5), False)
         
         self.rocks = []
-        self.bg_particles = []
+        self.bg_lines = []
         self.projectiles = []
         self.vfx.reset()
         self.hud.reset()
         self.particle_manager.reset()
         
         self.hud.level_text_loc = -100
-        self.zoom = 0
+        self.zoom = 1
         self.torch_radius = [15, 27]
         self.collided_torch = None
-
+        
     def run(self):
         while True:
             
             self.display.fill((6, 5, 15))
             self.ui_display.fill((0, 0, 0, 0))
-            
+                    
             self.master_clock += 1
-
+                        
             if (self.hud.instruction_index >= self.hud.instruction_len):
                 self.timer = max(self.timer - self.dt, 0)
             
             if (self.timer <= 0) and (not self.player.dead) and (not self.door_entered):
                 self.player.hit = True
+
+            if (self.level == 0) and (not self.show_door[0] and not self.show_door[1]) and (self.keys_collected == len(self.keys)):
+                self.show_door = [4, False]
+            
+            if self.show_door[0]:
+                self.show_door[0] = max(0, self.show_door[0] - self.dt)
+                self.camera.set_target(self.door['pos'])
+                self.player.allow_movement = False
+                self.projectiles = []
+                if self.show_door[0] < 3.5:
+                    self.zoom += (1.5 - self.zoom) / 80
+                for turret in self.turrets:
+                    turret.can_shoot = False                
+                if self.show_door[0] == 0:
+                    self.camera.set_target(self.player)
+                    self.player.allow_movement = True
+                    self.zoom = 1
+                    self.show_door[1] = True
 
             if self.transition != 0:
                 self.transition =  min(self.transition + 1, 60)
@@ -97,11 +125,28 @@ class Game:
                     self.reset_timer = max(self.reset_timer - 1, 0)
                     if not self.reset_timer:
                         if self.door_entered:
-                            self.level = min(self.level + 1, len(os.listdir('data/maps')))
+                            self.level = min(self.level + 1, len(os.listdir('data/maps')) - 1)
                         self.load_level(self.level)
-                        
+            
+            if random.randint(1, 8) == 1:
+                self.bg_lines.append([[self.camera.pos[0] + random.random() * self.display.get_width(), self.camera.pos[1] + self.display.get_height()], 0.25 + random.random() * 1.25, random.randint(7, 14), 0.025 + random.random() * 0.025, 0.4 + random.random() * 0.6]) # pos, speed, size, decay_rate, parallax
+                
+            for line in self.bg_lines:
+                line[0][1] -= line[1]
+                line[2] = max(0, line[2] - line[3])
+                
+                if line[2] <= 0:
+                    self.bg_lines.remove(line)
+                
+                render_pos = (line[0][0] - self.camera.pos[0] * line[4], line[0][1] - self.camera.pos[1] * line[4])
+                color = (32, 57, 79)
+                
+                pygame.draw.line(self.display, color, render_pos, (render_pos[0], render_pos[1] + line[2]))
+                
+
             edges = self.tilemap.get_map_edges()
             clamped = [False, False]
+            
             if self.camera.scroll[0] < edges[0]:
                 self.camera.scroll[0] = edges[0]
                 clamped[0] = True
@@ -115,17 +160,15 @@ class Game:
                 self.camera.scroll[1] = edges[3] - self.display.get_height()
                 clamped[1] = True
 
-            self.bg_particles[-300:]
-            
-                
             door = self.door
             door_img = self.tilemap.tiles[door['type']][door['variant']]
             door_rect = pygame.Rect(door['pos'][0], door['pos'][1], 7, 11)
             if (self.player.rect.collidepoint(door_rect.center)) and not self.transition and (self.keys_collected == len(self.keys)):
                 self.transition = max(self.transition, 1)
                 self.door_entered = True  
-            if self.master_clock // 20 % 4 > 0 and (self.keys_collected == len(self.keys)):
-                pt.utils.outline(self.display, door_img, (int(door['pos'][0] - self.camera.pos[0]), int(door['pos'][1] - self.camera.pos[1])))
+            if (self.keys_collected == len(self.keys)):
+                if self.master_clock // 20 % 2 > 0:
+                    pt.utils.outline(self.display, door_img, (int(door['pos'][0] - self.camera.pos[0]), int(door['pos'][1] - self.camera.pos[1])))
             self.display.blit(door_img, (int(door['pos'][0] - self.camera.pos[0]), int(door['pos'][1] - self.camera.pos[1])))
             
             self.tilemap.render_visible(self.display, visible_range=self.camera.get_visible_screen, offset=self.camera.pos)
@@ -139,7 +182,6 @@ class Game:
                         decay_rate = 300 + random.random() * 40
                         self.vfx.sparks.append(pt.Spark(rock[0],  angle, speed, decay_rate))
                     self.rocks.remove(rock)
-                    break
                 
                 if self.player.rect.collidepoint(rock[0]) and not self.player.hit:
                     self.rocks.remove(rock)
@@ -147,6 +189,7 @@ class Game:
 
                 render_pos = (rock[0][0] - self.camera.pos[0], rock[0][1] - self.camera.pos[1])
                 pt.utils.outline(self.display, rock[2], render_pos)
+                pt.utils.glow_blit(self.display, loc=(render_pos[0] - rock[2].get_height() + 1, render_pos[1] - rock[2].get_height() // 2), radius=rock[2].get_height(), glow_color=(9, 15, 42))
                 self.display.blit(rock[2], render_pos)
 
             for key in self.keys:
@@ -186,7 +229,8 @@ class Game:
                         self.collided_torch = None
             
             for mole in self.enemies:
-                mole.update(self.dt)
+                if not self.show_door[0]:
+                    mole.update(self.dt)
                 mole.render(self.display, offset=self.camera.pos)
             
             self.vfx.update(self.dt)
@@ -196,7 +240,7 @@ class Game:
             self.particle_manager.render(self.display, self.camera.pos)
             
             self.player.update()
-            self.player.render(self.display, offset=(self.camera.float_pos[0] + clamped[0], self.camera.float_pos[1] + clamped[1]))
+            self.player.render(self.display, offset=(self.camera.pos[0] + clamped[0], self.camera.pos[1] + clamped[1]))
             
             # pos, angle, speed, timer, 
             for proj in self.projectiles.copy():
@@ -206,7 +250,7 @@ class Game:
                 proj[3] += 1
                 
                 orig_img = self.misc_images['projectile']
-                sin_radius = 7 + math.sin(self.master_clock / 12) * 0.5 
+                sin_radius = 7 + math.sin(self.master_clock / 3) * 0.5 
                 img = pygame.transform.rotate(orig_img, -math.degrees(proj[1]))
                 loc = (proj[0][0] - self.camera.pos[0] - img.get_width() // 2, proj[0][1] - self.camera.pos[1] - img.get_height() // 2)
                 pt.utils.outline(self.display, img, loc)
@@ -218,8 +262,8 @@ class Game:
                 if self.player.rect.collidepoint(proj[0]) and not self.player.hit:
                     self.projectiles.remove(proj)
                     self.player.hit = True
-            
-            self.hud.render(self.ui_display, offset=self.camera.pos)
+                 
+            self.hud.render(self.ui_display)
             
             self.camera.update()
             self.input.update()
@@ -227,21 +271,29 @@ class Game:
             for rock in self.falling_rocks:
                 img_size = self.tilemap.tiles[rock['type']][rock['variant']].get_size()
                 rock_collide_check = (rock['pos'][0] + random.random() * img_size[0], rock['pos'][1] + img_size[1] - 2)
-                if not self.tilemap.tile_collide(rock_collide_check):
+                if not self.tilemap.tile_collide(rock_collide_check) and (not self.show_door[0]):
                     if random.randint(1, 200) == 1:
                         speed = 0.5 + random.random()
                         img = random.choice(self.fallen_rock_imgs)
                         self.rocks.append([list(rock_collide_check), speed, img])
                         
-            
             if self.transition:
                 black_surf = pygame.Surface(self.display.get_size())
                 black_surf.set_alpha(abs(self.transition) / 60 * 255)
                 self.display.blit(black_surf, (0, 0))
-            
-            
+     
             self.display.blit(self.ui_display, (0, 0))
-            self.screen.blit(pygame.transform.scale(self.display, self.screen.get_size()), (0, 0))
+            
+            if self.zoom == 1:
+                self.screen.blit(pygame.transform.scale(self.display, self.screen.get_size()), (0, 0))
+            else:
+                size = [int(self.display.get_width() / self.zoom), int(self.display.get_height() / self.zoom)]
+                door = self.door
+                door_rect = pygame.Rect(door['pos'][0], door['pos'][1], 7, 11)
+                door_offset = ((door_rect.center[0] - self.camera.pos[0]) - self.display.get_width() // 2, (door_rect.center[1] - self.camera.pos[1]) - self.display.get_height() // 2)
+                clipped_screen = pt.utils.clip(self.display, ((self.display.get_width() - size[0]) // 2 + door_offset[0], (self.display.get_height() - size[1]) // 2 + door_offset[1] ), (size[0], size[1]))
+                self.screen.blit(pygame.transform.scale(clipped_screen, self.screen.get_size()), (0, 0))
+                
             pygame.display.update()
             self.dt = self.clock.tick(60) / 1000
             

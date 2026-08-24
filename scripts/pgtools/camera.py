@@ -43,7 +43,13 @@ class Camera:
         val += (target - val) / lag 
         return val
 
+    def reset_target(self):
+        self.targeted_entity = None
+        self.targeted_pos = None
+    
     def set_target(self, target, snap=False):
+        self.reset_target()
+        
         if hasattr(target, 'center'):
             self.targeted_entity = target
         else:
@@ -51,7 +57,6 @@ class Camera:
         if snap:
             self.snap_to_target()
 
-        
     def snap_to_target(self):
         self.scroll[0] = self.target[0]
         self.scroll[1] = self.target[1]
